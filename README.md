@@ -4,7 +4,7 @@
 
 InsightCanvas connects to your relational database, lets you confirm how your tables relate, and turns questions such as *"monthly revenue this fiscal year versus last, West region"* into a validated SQL query and a customisable chart. The SQL is always visible, along with the calculation logic and the data table behind every chart. Everything, including the language model, runs inside your own environment.
 
-> **Status: pre-alpha.** The product requirements are written (PRD v1.4, 16 October 2026). Phase 1 build has not started. Nothing in this repository is production-ready.
+> **Status: pre-alpha.** The app in this repository can be run and deployed. It is not production-ready for real patient records.
 
 ## Why it exists
 
@@ -59,9 +59,61 @@ OWASP Top 10 (2025 categories) is the baseline, with concrete controls for broke
 
 Targets **WCAG 2.2 Level AA**: contrast, full keyboard operation, visible focus, reduced-motion support, and a text summary plus data-table alternative behind every chart.
 
-## Deployment model
+## Deploy
 
-InsightCanvas is installed and run inside each client's environment, on-premise or in a client-controlled cloud. The client supplies the runtime, including a GPU or sufficient CPU for the chosen Ollama model, and read-only database access.
+The runnable app is the repository root (`package.json`, `src/`, `migrations/`). It does not need a GPU or a local language model. Questions in this build are planned by the app itself.
+
+You need Node.js 22 or newer, and npm.
+
+### Run it on your machine
+
+```bash
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Open [http://localhost:8080](http://localhost:8080).
+
+On the first screen, add the email addresses that may open the app, then continue. Each person confirms their own email and types their first and last name. Add more people later on the Model page.
+
+Leave `DATABASE_URL` empty and the app uses a built-in Postgres (PGLite). That data lives in the running process. It is not shared with another machine, and it disappears when that process is replaced.
+
+### Use a shared database
+
+Set `DATABASE_URL` in `.env` to a Postgres connection string, such as a Neon URL. The database user must be allowed to create tables. This database holds the email list, saved reports, and the clinic book. It is not the customer's warehouse.
+
+```bash
+npm run build
+```
+
+`npm run build` builds the app and applies new files in `migrations/` once. Files under `migrations/auth/` are not applied while sign-in stays off. The same migration runs again on a later build and does nothing if it was already applied.
+
+A customer's own database is pasted on the Sources page as a read-only `postgres://` string. It is used for that query and is not saved in `.env`.
+
+| Variable | Required | What to set |
+| --- | --- | --- |
+| `DATABASE_URL` | Only for a shared deploy | Postgres URL. Empty means the built-in database. |
+| `VITE_AUTH_ENABLED` | No | Leave it `false`. The door is the email list inside the app. |
+
+### Deploy on Vercel
+
+The production build uses Nitro's Vercel preset. `vercel.json` is already in the repo.
+
+1. Import `acuitygen/insightcanvas` into Vercel.
+2. Set `DATABASE_URL` to the shared Postgres URL. Do not deploy the shared book on the built-in database: a Vercel function does not keep that data.
+3. Set `VITE_AUTH_ENABLED` to `false`.
+4. Build command: `npm run build`.
+5. Deploy. The first person to open the site adds the allowed emails, the same way as on a local machine.
+
+To check the production build before you ship it:
+
+```bash
+npm run build
+npm run preview
+```
+
+That preview listens on [http://127.0.0.1:8081](http://127.0.0.1:8081).
 
 ## Roadmap
 
