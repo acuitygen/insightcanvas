@@ -1,9 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { SUGGESTED } from "@/lib/insight/catalog"
-import { currentVisitor } from "@/components/insight/door"
-import { askClinic } from "@/lib/insight/clinic-insight"
-import { CLINIC_QUESTIONS, clinicOutcome } from "@/lib/insight/clinic-view"
 import { exportHtml } from "@/lib/insight/export-html"
 import { formatBy } from "@/lib/insight/format"
 import { answer } from "@/lib/insight/pipeline"
@@ -102,25 +99,17 @@ export function Studio() {
 
   useEffect(() => {
     if (!ready) return
-    let cancel = false
-    void askClinic({ data: { by: currentVisitor()?.email ?? "", question } }).then((hit) => {
-      if (cancel) return
-      setOutcome(hit.matched ? clinicOutcome(hit) : answer(question, ctx))
-      setVisual(null)
-      setSqlDraft(null)
-    })
-    return () => {
-      cancel = true
-    }
+    setOutcome(answer(question, ctx))
+    setVisual(null)
+    setSqlDraft(null)
   }, [ready, ctx, question])
 
   useEffect(() => {
     if (ready) void refreshSharedReports()
   }, [ready])
 
-  async function run(text: string) {
-    const hit = await askClinic({ data: { by: currentVisitor()?.email ?? "", question: text } })
-    const next = hit.matched ? clinicOutcome(hit) : answer(text, ready ? ctx : DEFAULT_CTX)
+  function run(text: string) {
+    const next = answer(text, ready ? ctx : DEFAULT_CTX)
     setDraft(text)
     setQuestion(text)
     setOutcome(next)
@@ -492,15 +481,7 @@ export function Studio() {
       </section>
 
       <section className="grid gap-2" aria-label="Examples">
-        <h2 className="text-sm font-semibold text-muted">Clinic book</h2>
-        <div className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible">
-          {CLINIC_QUESTIONS.map((item, index) => (
-            <button key={item} type="button" className={`${btn} shrink-0 border-0 ${chips[index % chips.length]}`} onClick={() => void run(item)}>
-              {item}
-            </button>
-          ))}
-        </div>
-        <h2 className="text-sm font-semibold text-muted">Shop extract</h2>
+        <h2 className="text-sm font-semibold text-muted">Examples</h2>
         <div className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible">
           {SUGGESTED[0].items.map((item, index) => (
             <button key={item} type="button" className={`${btn} shrink-0 border-0 ${chips[index % chips.length]}`} onClick={() => void run(item)}>

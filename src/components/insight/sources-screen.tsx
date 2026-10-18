@@ -74,7 +74,7 @@ export function SourcesScreen() {
       return
     }
     setReportId(saved.id)
-    setNote(`Pinned \u201c${tile.title}\u201d into the shared database.`)
+    setNote(`Pinned “${tile.title}” into the shared database.`)
   }
 
   const preview = active && (dimension || active.columns[0])
@@ -120,7 +120,7 @@ export function SourcesScreen() {
         <p className="text-sm text-muted">CSV, JSON, or Excel. Uploading again adds a new chip. Remove the old one. The first 800 rows stay in this browser. Ask still uses the Lumen Outdoor extract.</p>
         {note ? <p className="text-sm">{note}</p> : null}
       </section>
-      {!ready ? <p className="text-sm text-muted">Loading sources\u2026</p> : null}
+      {!ready ? <p className="text-sm text-muted">Loading sources…</p> : null}
       {sheets.length ? (
         <div className="flex flex-wrap gap-2">
           {sheets.map((sheet) => (
@@ -139,7 +139,7 @@ export function SourcesScreen() {
               Group by
               <select value={dimension || active.columns[0]?.key} onChange={(event) => setDimension(event.target.value)} className="min-h-11 rounded-full border border-line bg-paper px-4">
                 {active.columns.map((column) => (
-                  <option key={column.key} value={column.key}>{column.label} \u00b7 {fieldKindLabel(column.kind)}</option>
+                  <option key={column.key} value={column.key}>{column.label} · {fieldKindLabel(column.kind)}</option>
                 ))}
               </select>
             </label>
@@ -243,7 +243,7 @@ function LiveConnections() {
     const tile = {
       id: crypto.randomUUID(),
       title: `${valueKey} by ${labelKey}`,
-      summary: `${valueKey} by ${labelKey} \u00b7 database`,
+      summary: `${valueKey} by ${labelKey} · database`,
       source: "Postgres",
       visual: "bar" as const,
       chart: {
@@ -280,7 +280,7 @@ function LiveConnections() {
           Search
           <input value={query} onChange={(event) => setQuery(event.target.value)} className="min-h-11 rounded-full border border-line bg-paper px-4 font-normal" />
         </label>
-        <button type="submit" className={primary} disabled={busy === "mail"}>{busy === "mail" ? "Searching\u2026" : "Search mail"}</button>
+        <button type="submit" className={primary} disabled={busy === "mail"}>{busy === "mail" ? "Searching…" : "Search mail"}</button>
         {mailNote ? <p className="text-sm">{mailNote}</p> : null}
         {loginUrl ? (
           <a className={quiet} href={loginUrl}>
@@ -310,7 +310,7 @@ function LiveConnections() {
           <textarea value={sql} onChange={(event) => setSql(event.target.value)} rows={4} spellCheck={false} className="rounded-2xl border border-line bg-paper px-4 py-3 font-mono text-sm" />
         </label>
         <div className="flex flex-wrap gap-2">
-          <button type="submit" className={primary} disabled={busy === "db"}>{busy === "db" ? "Running\u2026" : "Run query"}</button>
+          <button type="submit" className={primary} disabled={busy === "db"}>{busy === "db" ? "Running…" : "Run query"}</button>
           <button type="button" className={quiet} onClick={() => void pinQuery()} disabled={!rows.length}>Pin result</button>
         </div>
         {dbNote ? <p className="text-sm">{dbNote}</p> : null}
