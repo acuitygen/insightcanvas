@@ -1,8 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { answer } from "@/lib/insight/pipeline"
-import { currentVisitor } from "@/components/insight/door"
-import { clinicOutline } from "@/lib/insight/clinic-insight"
 import { practiceSheet } from "@/lib/insight/samples"
 import { dropReport, dropTile, publishReport, refreshSharedReports } from "@/lib/insight/shared-client"
 import { useInsight, useInsightReady } from "@/lib/insight/store"
@@ -52,21 +50,7 @@ export function ReportsHome() {
     void navigate({ to: "/reports/$id", params: { id: result.id } })
   }
 
-  async function createStarter(kind: "clinic" | "practice" | "shop") {
-    if (kind === "clinic") {
-      const outline = await clinicOutline({ data: { by: currentVisitor()?.email ?? "" } })
-      if (!outline.ok) {
-        setNote(outline.message)
-        return
-      }
-      const result = await publishReport({ title: "Clinic outline", audience: "Clinic", tiles: outline.tiles })
-      if (!result.ok) {
-        setNote(result.message)
-        return
-      }
-      void navigate({ to: "/reports/$id", params: { id: result.id } })
-      return
-    }
+  async function createStarter(kind: "practice" | "shop") {
     if (kind === "shop") {
       const tiles = [
         "Revenue by month, fiscal year to date",
@@ -107,10 +91,10 @@ export function ReportsHome() {
       <section className="grid gap-3 rounded-[1.25rem] bg-canvas p-4" aria-labelledby="how-reports">
         <h2 id="how-reports" className="text-xl tracking-tight">How to create a report</h2>
         <ol className="grid gap-2 text-sm">
-          <li><span className="font-semibold">1. Start the page.</span> Name it, choose who it is for, and press Create empty page. Or use a starter: Clinic outline, Practice week, or Shop month. Clinic outline is filled from the clinic book. You do not arrange the charts.</li>
+          <li><span className="font-semibold">1. Start the page.</span> Name it, choose who it is for, and press Create empty page. Or use a starter: Practice week or Shop month. A starter places several visuals on the page. You do not arrange them.</li>
           <li><span className="font-semibold">2. Pin from Ask.</span> Run a question. Pick the report, or leave it on New report, and press Pin to report.</li>
           <li><span className="font-semibold">3. Pin from Sources.</span> Upload a file or run a database query, shape the chart, then press Pin this visual or Pin result.</li>
-          <li><span className="font-semibold">4. Open the page.</span> Remove any visual you do not want. The clinic book itself stays on the Clinic tab. It does not have to be uploaded.</li>
+          <li><span className="font-semibold">4. Open the page.</span> Remove any visual you do not want. Eight is the limit.</li>
         </ol>
       </section>
       <section className="grid gap-3 rounded-[1.25rem] bg-canvas p-4 md:grid-cols-[1fr_auto] md:items-end">
@@ -131,7 +115,6 @@ export function ReportsHome() {
       </section>
       {note ? <p className="text-sm">{note}</p> : null}
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={quiet} onClick={() => void createStarter("clinic")}>Clinic outline</button>
         <button type="button" className={quiet} onClick={() => void createStarter("practice")}>Practice week starter</button>
         <button type="button" className={quiet} onClick={() => void createStarter("shop")}>Shop month starter</button>
       </div>
