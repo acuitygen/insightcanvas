@@ -1,25 +1,14 @@
-import { useEffect, useState } from "react"
-import { currentVisitor } from "@/components/insight/door"
-import { listReveals } from "@/lib/insight/clinic-insight"
 import { useInsight, useInsightReady } from "@/lib/insight/store"
 
 export function AuditScreen() {
   const ready = useInsightReady()
   const audit = useInsight((state) => state.audit)
-  const [reveals, setReveals] = useState<{ email: string; subject: string; at: string }[]>([])
-  useEffect(() => {
-    const by = currentVisitor()?.email ?? ""
-    if (!by) return
-    void listReveals({ data: { by } }).then((result) => {
-      if (result.ok) setReveals(result.rows)
-    })
-  }, [])
   return (
     <div className="grid gap-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl md:text-4xl">Audit log</h1>
-          <p className="mt-2 max-w-2xl text-muted">Questions stay in this browser. Name reveals are stored with the clinic book.</p>
+          <p className="mt-2 max-w-2xl text-muted">Question, status, SQL, and row count. Secrets are not written here. This log stays in the browser.</p>
         </div>
         <button
           type="button"
@@ -48,18 +37,6 @@ export function AuditScreen() {
             ))
           : null}
       </ul>
-      <section className="grid gap-2">
-        <h2 className="text-xl">Name reveals</h2>
-        {reveals.length === 0 ? <p className="text-sm text-muted">No one has revealed patient names.</p> : null}
-        <ul className="grid gap-2">
-          {reveals.map((row) => (
-            <li key={`${row.at}-${row.email}`} className="rounded-[1.25rem] border border-line px-4 py-3 text-sm">
-              <span className="font-semibold">{row.email}</span> revealed {row.subject}
-              <span className="text-muted"> · {row.at.replace("T", " ").slice(0, 19)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   )
 }

@@ -4,7 +4,6 @@ import { RequireAccess } from "./door"
 
 const LINKS = [
   { to: "/", label: "Ask" },
-  { to: "/clinic", label: "Clinic" },
   { to: "/reports", label: "Reports" },
   { to: "/sources", label: "Sources" },
   { to: "/model", label: "Model" },

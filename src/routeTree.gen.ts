@@ -11,21 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuditRouteImport } from './routes/audit'
-import { Route as ClinicRouteImport } from './routes/clinic'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as ModelRouteImport } from './routes/model'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SourcesRouteImport } from './routes/sources'
-import { Route as ClinicIndexRouteImport } from './routes/clinic.index'
-import { Route as ClinicFinanceRouteImport } from './routes/clinic.finance'
-import { Route as ClinicMedicinesRouteImport } from './routes/clinic.medicines'
-import { Route as ClinicPatientsRouteImport } from './routes/clinic.patients'
-import { Route as ClinicVisitRouteImport } from './routes/clinic.visit'
 import { Route as EmbedIdRouteImport } from './routes/embed.$id'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as ReportsIdRouteImport } from './routes/reports.$id'
-import { Route as ClinicPatientsIdRouteImport } from './routes/clinic.patients.$id'
-import { Route as ClinicPreviewIdRouteImport } from './routes/clinic.preview.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,11 +27,6 @@ const IndexRoute = IndexRouteImport.update({
 const AuditRoute = AuditRouteImport.update({
   id: '/audit',
   path: '/audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClinicRoute = ClinicRouteImport.update({
-  id: '/clinic',
-  path: '/clinic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HelpRoute = HelpRouteImport.update({
@@ -62,31 +49,6 @@ const SourcesRoute = SourcesRouteImport.update({
   path: '/sources',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ClinicIndexRoute = ClinicIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ClinicRoute,
-} as any)
-const ClinicFinanceRoute = ClinicFinanceRouteImport.update({
-  id: '/finance',
-  path: '/finance',
-  getParentRoute: () => ClinicRoute,
-} as any)
-const ClinicMedicinesRoute = ClinicMedicinesRouteImport.update({
-  id: '/medicines',
-  path: '/medicines',
-  getParentRoute: () => ClinicRoute,
-} as any)
-const ClinicPatientsRoute = ClinicPatientsRouteImport.update({
-  id: '/patients',
-  path: '/patients',
-  getParentRoute: () => ClinicRoute,
-} as any)
-const ClinicVisitRoute = ClinicVisitRouteImport.update({
-  id: '/visit',
-  path: '/visit',
-  getParentRoute: () => ClinicRoute,
-} as any)
 const EmbedIdRoute = EmbedIdRouteImport.update({
   id: '/embed/$id',
   path: '/embed/$id',
@@ -102,35 +64,17 @@ const ReportsIdRoute = ReportsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ReportsRoute,
 } as any)
-const ClinicPatientsIdRoute = ClinicPatientsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ClinicPatientsRoute,
-} as any)
-const ClinicPreviewIdRoute = ClinicPreviewIdRouteImport.update({
-  id: '/preview/$id',
-  path: '/preview/$id',
-  getParentRoute: () => ClinicRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
-  '/clinic': typeof ClinicRouteWithChildren
   '/help': typeof HelpRoute
   '/model': typeof ModelRoute
   '/reports': typeof ReportsRouteWithChildren
   '/sources': typeof SourcesRoute
-  '/clinic/finance': typeof ClinicFinanceRoute
-  '/clinic/medicines': typeof ClinicMedicinesRoute
-  '/clinic/patients': typeof ClinicPatientsRouteWithChildren
-  '/clinic/visit': typeof ClinicVisitRoute
   '/embed/$id': typeof EmbedIdRoute
   '/reports/$id': typeof ReportsIdRoute
-  '/clinic/': typeof ClinicIndexRoute
   '/reports/': typeof ReportsIndexRoute
-  '/clinic/patients/$id': typeof ClinicPatientsIdRoute
-  '/clinic/preview/$id': typeof ClinicPreviewIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -138,57 +82,34 @@ export interface FileRoutesByTo {
   '/help': typeof HelpRoute
   '/model': typeof ModelRoute
   '/sources': typeof SourcesRoute
-  '/clinic/finance': typeof ClinicFinanceRoute
-  '/clinic/medicines': typeof ClinicMedicinesRoute
-  '/clinic/patients': typeof ClinicPatientsRouteWithChildren
-  '/clinic/visit': typeof ClinicVisitRoute
   '/embed/$id': typeof EmbedIdRoute
   '/reports/$id': typeof ReportsIdRoute
-  '/clinic': typeof ClinicIndexRoute
   '/reports': typeof ReportsIndexRoute
-  '/clinic/patients/$id': typeof ClinicPatientsIdRoute
-  '/clinic/preview/$id': typeof ClinicPreviewIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
-  '/clinic': typeof ClinicRouteWithChildren
   '/help': typeof HelpRoute
   '/model': typeof ModelRoute
   '/reports': typeof ReportsRouteWithChildren
   '/sources': typeof SourcesRoute
-  '/clinic/finance': typeof ClinicFinanceRoute
-  '/clinic/medicines': typeof ClinicMedicinesRoute
-  '/clinic/patients': typeof ClinicPatientsRouteWithChildren
-  '/clinic/visit': typeof ClinicVisitRoute
   '/embed/$id': typeof EmbedIdRoute
   '/reports/$id': typeof ReportsIdRoute
-  '/clinic/': typeof ClinicIndexRoute
   '/reports/': typeof ReportsIndexRoute
-  '/clinic/patients/$id': typeof ClinicPatientsIdRoute
-  '/clinic/preview/$id': typeof ClinicPreviewIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/audit'
-    | '/clinic'
     | '/help'
     | '/model'
     | '/reports'
     | '/sources'
-    | '/clinic/finance'
-    | '/clinic/medicines'
-    | '/clinic/patients'
-    | '/clinic/visit'
     | '/embed/$id'
     | '/reports/$id'
-    | '/clinic/'
     | '/reports/'
-    | '/clinic/patients/$id'
-    | '/clinic/preview/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -196,41 +117,25 @@ export interface FileRouteTypes {
     | '/help'
     | '/model'
     | '/sources'
-    | '/clinic/finance'
-    | '/clinic/medicines'
-    | '/clinic/patients'
-    | '/clinic/visit'
     | '/embed/$id'
     | '/reports/$id'
-    | '/clinic'
     | '/reports'
-    | '/clinic/patients/$id'
-    | '/clinic/preview/$id'
   id:
     | '__root__'
     | '/'
     | '/audit'
-    | '/clinic'
     | '/help'
     | '/model'
     | '/reports'
     | '/sources'
-    | '/clinic/finance'
-    | '/clinic/medicines'
-    | '/clinic/patients'
-    | '/clinic/visit'
     | '/embed/$id'
     | '/reports/$id'
-    | '/clinic/'
     | '/reports/'
-    | '/clinic/patients/$id'
-    | '/clinic/preview/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuditRoute: typeof AuditRoute
-  ClinicRoute: typeof ClinicRouteWithChildren
   HelpRoute: typeof HelpRoute
   ModelRoute: typeof ModelRoute
   ReportsRoute: typeof ReportsRouteWithChildren
@@ -252,13 +157,6 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/audit'
       preLoaderRoute: typeof AuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clinic': {
-      id: '/clinic'
-      path: '/clinic'
-      fullPath: '/clinic'
-      preLoaderRoute: typeof ClinicRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/help': {
@@ -289,41 +187,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SourcesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/clinic/': {
-      id: '/clinic/'
-      path: '/'
-      fullPath: '/clinic/'
-      preLoaderRoute: typeof ClinicIndexRouteImport
-      parentRoute: typeof ClinicRoute
-    }
-    '/clinic/finance': {
-      id: '/clinic/finance'
-      path: '/finance'
-      fullPath: '/clinic/finance'
-      preLoaderRoute: typeof ClinicFinanceRouteImport
-      parentRoute: typeof ClinicRoute
-    }
-    '/clinic/medicines': {
-      id: '/clinic/medicines'
-      path: '/medicines'
-      fullPath: '/clinic/medicines'
-      preLoaderRoute: typeof ClinicMedicinesRouteImport
-      parentRoute: typeof ClinicRoute
-    }
-    '/clinic/patients': {
-      id: '/clinic/patients'
-      path: '/patients'
-      fullPath: '/clinic/patients'
-      preLoaderRoute: typeof ClinicPatientsRouteImport
-      parentRoute: typeof ClinicRoute
-    }
-    '/clinic/visit': {
-      id: '/clinic/visit'
-      path: '/visit'
-      fullPath: '/clinic/visit'
-      preLoaderRoute: typeof ClinicVisitRouteImport
-      parentRoute: typeof ClinicRoute
-    }
     '/embed/$id': {
       id: '/embed/$id'
       path: '/embed/$id'
@@ -345,55 +208,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsIdRouteImport
       parentRoute: typeof ReportsRoute
     }
-    '/clinic/patients/$id': {
-      id: '/clinic/patients/$id'
-      path: '/$id'
-      fullPath: '/clinic/patients/$id'
-      preLoaderRoute: typeof ClinicPatientsIdRouteImport
-      parentRoute: typeof ClinicPatientsRoute
-    }
-    '/clinic/preview/$id': {
-      id: '/clinic/preview/$id'
-      path: '/preview/$id'
-      fullPath: '/clinic/preview/$id'
-      preLoaderRoute: typeof ClinicPreviewIdRouteImport
-      parentRoute: typeof ClinicRoute
-    }
   }
 }
-
-interface ClinicPatientsRouteChildren {
-  ClinicPatientsIdRoute: typeof ClinicPatientsIdRoute
-}
-
-const ClinicPatientsRouteChildren: ClinicPatientsRouteChildren = {
-  ClinicPatientsIdRoute: ClinicPatientsIdRoute,
-}
-
-const ClinicPatientsRouteWithChildren = ClinicPatientsRoute._addFileChildren(
-  ClinicPatientsRouteChildren,
-)
-
-interface ClinicRouteChildren {
-  ClinicFinanceRoute: typeof ClinicFinanceRoute
-  ClinicMedicinesRoute: typeof ClinicMedicinesRoute
-  ClinicPatientsRoute: typeof ClinicPatientsRouteWithChildren
-  ClinicVisitRoute: typeof ClinicVisitRoute
-  ClinicIndexRoute: typeof ClinicIndexRoute
-  ClinicPreviewIdRoute: typeof ClinicPreviewIdRoute
-}
-
-const ClinicRouteChildren: ClinicRouteChildren = {
-  ClinicFinanceRoute: ClinicFinanceRoute,
-  ClinicMedicinesRoute: ClinicMedicinesRoute,
-  ClinicPatientsRoute: ClinicPatientsRouteWithChildren,
-  ClinicVisitRoute: ClinicVisitRoute,
-  ClinicIndexRoute: ClinicIndexRoute,
-  ClinicPreviewIdRoute: ClinicPreviewIdRoute,
-}
-
-const ClinicRouteWithChildren =
-  ClinicRoute._addFileChildren(ClinicRouteChildren)
 
 interface ReportsRouteChildren {
   ReportsIdRoute: typeof ReportsIdRoute
@@ -411,7 +227,6 @@ const ReportsRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuditRoute: AuditRoute,
-  ClinicRoute: ClinicRouteWithChildren,
   HelpRoute: HelpRoute,
   ModelRoute: ModelRoute,
   ReportsRoute: ReportsRouteWithChildren,
