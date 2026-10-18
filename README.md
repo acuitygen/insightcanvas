@@ -81,7 +81,7 @@ Leave `DATABASE_URL` empty and the app uses a built-in Postgres (PGLite). That d
 
 ### Use a shared database
 
-Set `DATABASE_URL` in `.env` to a Postgres connection string, such as a Neon URL. The database user must be allowed to create tables. This database holds the email list, saved reports, and the clinic book. It is not the customer's warehouse.
+Set `DATABASE_URL` in `.env` to a Postgres connection string, such as a Neon URL. The database user must be allowed to create tables. This database holds the email list and saved reports. It is not the customer's warehouse.
 
 ```bash
 npm run build

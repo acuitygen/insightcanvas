@@ -74,7 +74,7 @@ export function SourcesScreen() {
       return
     }
     setReportId(saved.id)
-    setNote(`Pinned “${tile.title}” into the shared database.`)
+    setNote(`Pinned \u201c${tile.title}\u201d into the shared database.`)
   }
 
   const preview = active && (dimension || active.columns[0])
@@ -92,16 +92,15 @@ export function SourcesScreen() {
       <header className="grid gap-2">
         <p className="text-sm font-semibold text-heat">Bring the day in</p>
         <h1 className="text-3xl tracking-tight md:text-5xl">Sources</h1>
-        <p className="max-w-2xl text-muted">The clinic book is already connected. Files, mail, and an outside Postgres database are added here, then pinned onto a report.</p>
+        <p className="max-w-2xl text-muted">Files, mail, and an outside Postgres database are added here, then pinned onto a report.</p>
       </header>
       <section className="grid gap-3 rounded-[1.25rem] bg-canvas p-4" aria-labelledby="how-sources">
         <h2 id="how-sources" className="text-xl tracking-tight">How to update a source</h2>
         <ol className="grid gap-2 text-sm">
-          <li><span className="font-semibold">1. Clinic book.</span> Open Clinic. New visits and new patients update the shelf, the files, and the finance totals. Do not upload that book.</li>
-          <li><span className="font-semibold">2. Replace a file.</span> Choose a newer CSV, JSON, or Excel file. The new chip appears below. Press Remove file on the old chip. Only the first 800 rows stay, and only in this browser.</li>
-          <li><span className="font-semibold">3. Shape it.</span> Pick Group by, Measure, Calculation, and Visual. Pin this visual adds the chart to a report.</li>
-          <li><span className="font-semibold">4. Mail.</span> Choose Gmail or Outlook, type a search such as newer_than:7d, and press Search mail. Connect that mailbox in Grok first. Messages are not stored.</li>
-          <li><span className="font-semibold">5. Outside database.</span> Paste a postgres:// connection string and one SELECT, then Run query. The string is not saved. Pin result puts the chart on a report.</li>
+          <li><span className="font-semibold">1. Replace a file.</span> Choose a newer CSV, JSON, or Excel file. The new chip appears below. Press Remove file on the old chip. Only the first 800 rows stay, and only in this browser.</li>
+          <li><span className="font-semibold">2. Shape it.</span> Pick Group by, Measure, Calculation, and Visual. Pin this visual adds the chart to a report.</li>
+          <li><span className="font-semibold">3. Mail.</span> Choose Gmail or Outlook, type a search such as newer_than:7d, and press Search mail. Connect that mailbox in Grok first. Messages are not stored.</li>
+          <li><span className="font-semibold">4. Outside database.</span> Paste a postgres:// connection string and one SELECT, then Run query. The string is not saved. Pin result puts the chart on a report.</li>
         </ol>
       </section>
       <LiveConnections />
@@ -121,7 +120,7 @@ export function SourcesScreen() {
         <p className="text-sm text-muted">CSV, JSON, or Excel. Uploading again adds a new chip. Remove the old one. The first 800 rows stay in this browser. Ask still uses the Lumen Outdoor extract.</p>
         {note ? <p className="text-sm">{note}</p> : null}
       </section>
-      {!ready ? <p className="text-sm text-muted">Loading sources…</p> : null}
+      {!ready ? <p className="text-sm text-muted">Loading sources\u2026</p> : null}
       {sheets.length ? (
         <div className="flex flex-wrap gap-2">
           {sheets.map((sheet) => (
@@ -131,7 +130,7 @@ export function SourcesScreen() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted">No file yet. A clinic day or practice week starter on Reports also adds a sample book here.</p>
+        <p className="text-sm text-muted">No file yet. A practice week starter on Reports also adds a sample book here.</p>
       )}
       {active && preview ? (
         <section className="grid gap-4">
@@ -140,7 +139,7 @@ export function SourcesScreen() {
               Group by
               <select value={dimension || active.columns[0]?.key} onChange={(event) => setDimension(event.target.value)} className="min-h-11 rounded-full border border-line bg-paper px-4">
                 {active.columns.map((column) => (
-                  <option key={column.key} value={column.key}>{column.label} · {fieldKindLabel(column.kind)}</option>
+                  <option key={column.key} value={column.key}>{column.label} \u00b7 {fieldKindLabel(column.kind)}</option>
                 ))}
               </select>
             </label>
@@ -244,7 +243,7 @@ function LiveConnections() {
     const tile = {
       id: crypto.randomUUID(),
       title: `${valueKey} by ${labelKey}`,
-      summary: `${valueKey} by ${labelKey} · database`,
+      summary: `${valueKey} by ${labelKey} \u00b7 database`,
       source: "Postgres",
       visual: "bar" as const,
       chart: {
@@ -281,7 +280,7 @@ function LiveConnections() {
           Search
           <input value={query} onChange={(event) => setQuery(event.target.value)} className="min-h-11 rounded-full border border-line bg-paper px-4 font-normal" />
         </label>
-        <button type="submit" className={primary} disabled={busy === "mail"}>{busy === "mail" ? "Searching…" : "Search mail"}</button>
+        <button type="submit" className={primary} disabled={busy === "mail"}>{busy === "mail" ? "Searching\u2026" : "Search mail"}</button>
         {mailNote ? <p className="text-sm">{mailNote}</p> : null}
         {loginUrl ? (
           <a className={quiet} href={loginUrl}>
@@ -311,7 +310,7 @@ function LiveConnections() {
           <textarea value={sql} onChange={(event) => setSql(event.target.value)} rows={4} spellCheck={false} className="rounded-2xl border border-line bg-paper px-4 py-3 font-mono text-sm" />
         </label>
         <div className="flex flex-wrap gap-2">
-          <button type="submit" className={primary} disabled={busy === "db"}>{busy === "db" ? "Running…" : "Run query"}</button>
+          <button type="submit" className={primary} disabled={busy === "db"}>{busy === "db" ? "Running\u2026" : "Run query"}</button>
           <button type="button" className={quiet} onClick={() => void pinQuery()} disabled={!rows.length}>Pin result</button>
         </div>
         {dbNote ? <p className="text-sm">{dbNote}</p> : null}
