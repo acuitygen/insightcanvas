@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { queryDatabase } from "@/lib/insight/external-db"
 import { searchMail, type MailMessage } from "@/lib/insight/mail"
-import { parseCsv, parseExcel, parseJson, sheetFromRecords, type Sheet } from "@/lib/insight/sheets"
+import { checkSize, parseCsv, parseExcel, parseJson, sheetFromRecords, type Sheet } from "@/lib/insight/sheets"
 import { publishReport, refreshSharedReports } from "@/lib/insight/shared-client"
 import { useInsight, useInsightReady } from "@/lib/insight/store"
 import { fieldKindLabel, resultFromTile, tileFromSheet } from "@/lib/insight/table-visual"
@@ -30,6 +30,7 @@ export function SourcesScreen() {
   async function takeFile(file: File) {
     const lower = file.name.toLowerCase()
     try {
+      checkSize(file.size)
       let records
       let kind: Sheet["kind"] = "csv"
       if (lower.endsWith(".json")) {

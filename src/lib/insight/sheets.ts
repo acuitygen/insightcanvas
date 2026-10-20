@@ -14,6 +14,34 @@ export type Sheet = {
 
 const ROW_CAP = 800
 
+/** Upload limits. Files over the size limit are refused; parsing stops after MAX_ROWS data rows. */
+export const MAX_FILE_BYTES = 10 * 1024 * 1024
+export const MAX_ROWS = 50_000
+export const MAX_COLUMNS = 200
+
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"])
+
+/** Header names come from the file. Never let one become a prototype key. */
+function safeLabel(label: string, index: number): string {
+  const trimmed = label.trim()
+  if (!trimmed || UNSAFE_KEYS.has(trimmed)) return `Column ${index + 1}`
+  return trimmed.slice(0, 120)
+}
+
+export function checkSize(bytes: number) {
+  if (bytes > MAX_FILE_BYTES) {
+    throw new Error(`That file is ${(bytes / 1024 / 1024).toFixed(1)} MB. The limit is ${MAX_FILE_BYTES / 1024 / 1024} MB.`)
+  }
+}
+
+function safeRecord(source: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  Object.keys(source).slice(0, MAX_COLUMNS).forEach((key, index) => {
+    Object.defineProperty(out, safeLabel(key, index), { value: source[key], enumerable: true, writable: true, configurable: true })
+  })
+  return out
+}
+
 function slug(label: string, index: number) {
   const key = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
   return key || `column_${index + 1}`
@@ -61,6 +89,7 @@ export function sheetFromRecords(name: string, kind: SheetKind, records: Record<
 }
 
 export function parseCsv(text: string): Record<string, unknown>[] {
+  checkSize(text.length)
   const rows: string[][] = []
   let cellText = ""
   let row: string[] = []
@@ -85,34 +114,48 @@ export function parseCsv(text: string): Record<string, unknown>[] {
       rows.push(row)
       row = []
       cellText = ""
+      if (rows.length > MAX_ROWS) break
     } else if (char !== "\r") cellText += char
   }
   row.push(cellText)
-  if (row.some((item) => item.trim())) rows.push(row)
+  if (rows.length <= MAX_ROWS && row.some((item) => item.trim())) rows.push(row)
   const [header, ...body] = rows
   if (!header) return []
   return body
     .filter((line) => line.some((item) => item.trim()))
     .map((line) => {
       const record: Record<string, unknown> = {}
-      header.forEach((label, index) => {
-        record[label.trim() || `Column ${index + 1}`] = line[index] ?? ""
+      header.slice(0, MAX_COLUMNS).forEach((label, index) => {
+        Object.defineProperty(record, safeLabel(label, index), { value: line[index] ?? "", enumerable: true, writable: true, configurable: true })
       })
       return record
     })
 }
 
 export function parseJson(text: string): Record<string, unknown>[] {
+  checkSize(text.length)
   const parsed = JSON.parse(text) as unknown
   const list = Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" && Array.isArray((parsed as { data?: unknown }).data) ? (parsed as { data: unknown[] }).data : null
   if (!list) throw new Error("JSON must be a list of rows, or an object with a data list.")
-  return list.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+  return list
+    .slice(0, MAX_ROWS)
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+    .map(safeRecord)
 }
 
 export async function parseExcel(buffer: ArrayBuffer): Promise<Record<string, unknown>[]> {
+  checkSize(buffer.byteLength)
   const XLSX = await import("xlsx")
-  const book = XLSX.read(buffer, { type: "array" })
+  // Read only what we show: no formulas, styles or HTML, and stop after MAX_ROWS data rows.
+  const book = XLSX.read(buffer, {
+    type: "array",
+    sheetRows: MAX_ROWS + 1,
+    cellFormula: false,
+    cellHTML: false,
+    cellStyles: false,
+    bookVBA: false,
+  })
   const name = book.SheetNames[0]
   if (!name) return []
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(book.Sheets[name], { defval: "" })
+  return XLSX.utils.sheet_to_json<Record<string, unknown>>(book.Sheets[name], { defval: "" }).map(safeRecord)
 }
