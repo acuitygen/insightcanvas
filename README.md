@@ -202,7 +202,7 @@ scripts/           build, migration and template tooling
 
 ## Licence
 
-Proprietary, all rights reserved, AcuityGen LLP (not yet confirmed; there's no licence file). `CONTRIBUTING.md`: not accepting outside contributions during pre-alpha.
+Proprietary, all rights reserved, AcuityGen LLP. See [LICENSE](LICENSE). It is a **draft pending lawyer review**. `CONTRIBUTING.md`: not accepting outside contributions during pre-alpha.
 
 ## Owner
 
