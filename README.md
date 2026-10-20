@@ -178,7 +178,6 @@ npm run test:template # app-builder template tooling tests; needs the builder's 
 - **Outside-database queries** don't verify SELECT-only accounts or restrict hosts.
 - **Mail search goes through the Grok connector**, so it depends on that platform. Data shown there leaves your network.
 - **`xlsx` 0.18.5** has a known high-severity advisory for crafted files.
-- **The repo still contains app-builder template files** (`AGENTS.md`, `public/__grok`, the PWA plugin, `scripts/*.test.mjs`).
 
 ## Roadmap
 
@@ -198,7 +197,6 @@ src/components/    screens (Ask studio, Model, Sources, Reports, Audit, Help, Em
 src/routes/        TanStack routes
 migrations/        app database (email list, reports); migrations/auth only when sign-in is on
 docs/PRD.md        product requirements (v1.4)
-archive/           the retired clinic book, not compiled
 scripts/           build, migration and template tooling
 ```
 
