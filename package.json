@@ -102,5 +102,6 @@
     "prettier": "^3.4.0",
     "tsx": "^4.23.15",
     "typescript-eslint": "^8.56.1"
-  }
+  },
+  "license": "UNLICENSED"
 }
