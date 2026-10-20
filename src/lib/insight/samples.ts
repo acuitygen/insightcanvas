@@ -2,22 +2,24 @@ import { sheetFromRecords } from "./sheets"
 
 const days = ["2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16"]
 
-export function clinicSheet() {
-  const clinicians = ["Dr Mehta", "Dr Iyer", "Nurse Kaur"]
-  const visits = ["Consult", "Follow-up", "Procedure"]
-  const statuses = ["Kept", "Kept", "Kept", "No-show", "Cancelled"]
+/** Fictional sales log: made-up reps, regions and products for demos and tests. */
+export function salesSheet() {
+  const reps = ["Rep Alpha", "Rep Bravo", "Rep Charlie"]
+  const products = ["Widget", "Gadget", "Service plan"]
+  const stages = ["Won", "Won", "Won", "Lost", "Pending"]
   const records = days.flatMap((day, dayIndex) =>
-    clinicians.map((clinician, index) => ({
+    reps.map((rep, index) => ({
       Day: day,
-      Clinician: clinician,
-      Visit: visits[(dayIndex + index) % visits.length],
-      Status: statuses[(dayIndex + index) % statuses.length],
-      Minutes: 15 + ((dayIndex + index) % 4) * 15,
-      Fee: statuses[(dayIndex + index) % statuses.length] === "Kept" ? 800 + index * 450 : 0,
+      Rep: rep,
+      Region: ["North", "South", "West"][index],
+      Product: products[(dayIndex + index) % products.length],
+      Stage: stages[(dayIndex + index) % stages.length],
+      Units: 1 + ((dayIndex + index) % 4),
+      Revenue: stages[(dayIndex + index) % stages.length] === "Won" ? (1 + ((dayIndex + index) % 4)) * 1200 : 0,
     })),
   )
-  const sheet = sheetFromRecords("Clinic day book", "sample", records)
-  sheet.id = "sample-clinic"
+  const sheet = sheetFromRecords("Sample sales log (fictional)", "sample", records)
+  sheet.id = "sample-sales"
   return sheet
 }
 

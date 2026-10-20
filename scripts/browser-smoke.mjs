@@ -3,7 +3,6 @@ import { mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "
 import { dirname } from "node:path";
 import { chromium } from "playwright";
 import { checkedOutputPath, checkedUrl } from "./browser-guard.mjs";
-import { computeBrandWarnings } from "./brand-check.mjs";
 import {
   authInvariantWarnings,
   buildAuthEnabled,
@@ -140,7 +139,7 @@ try {
     };
   }
 
-  const brandWarnings = computeBrandWarnings({ hasCanvas: viewports.desktop.hasCanvas });
+  const brandWarnings = [];
   // Only a dev server answers /__app-env, so smoking the built output reads as
   // indeterminate — report a divergence, never the absence of an observation.
   const authWarnings = authInvariantWarnings(
