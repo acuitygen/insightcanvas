@@ -14,12 +14,6 @@ type TileRow = {
   position: number
 }
 
-function cleanEmail(value: unknown) {
-  const email = String(value ?? "").trim().toLowerCase()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Confirm your email first.")
-  return email
-}
-
 function cleanText(value: unknown, label: string, max = 160) {
   const text = String(value ?? "").trim().replace(/\s+/g, " ")
   if (!text || text.length > max) throw new Error(`Enter a ${label}.`)
@@ -31,11 +25,10 @@ async function db() {
   return getSql()
 }
 
-async function assertAllowed(email: string) {
-  const sql = await db()
-  const rows = await sql<{ email: string }>`select email from allowed_email where email = ${email}`
-  if (!rows.length) return "That email is not on the list for this link."
-  return null
+async function assertAllowed() {
+  const { currentUser } = await import("./auth/session.server")
+  const user = await currentUser()
+  return user ? null : "Sign in first."
 }
 
 function asReport(row: ReportRow, tiles: Tile[]) {
@@ -56,9 +49,9 @@ function parseTile(row: TileRow): Tile {
 }
 
 export const listSharedReports = createServerFn({ method: "POST" })
-  .validator((input: { by: string }) => ({ by: cleanEmail(input.by) }))
+  .validator(() => ({}))
   .handler(async ({ data }) => {
-    const denied = await assertAllowed(data.by)
+    const denied = await assertAllowed()
     if (denied) return { ok: false as const, message: denied, reports: [] }
     const sql = await db()
     const pages = await sql<ReportRow>`select id, title, audience, updated_at from report_page order by updated_at desc`
@@ -68,15 +61,14 @@ export const listSharedReports = createServerFn({ method: "POST" })
   })
 
 export const saveSharedReport = createServerFn({ method: "POST" })
-  .validator((input: { by: string; id?: string; title: string; audience: string; tiles?: Tile[] }) => ({
-    by: cleanEmail(input.by),
+  .validator((input: { id?: string; title: string; audience: string; tiles?: Tile[] }) => ({
     id: String(input.id ?? "").trim() || crypto.randomUUID(),
     title: cleanText(input.title, "report name"),
     audience: cleanText(input.audience, "audience", 40),
     tiles: (input.tiles ?? []).slice(0, 8),
   }))
   .handler(async ({ data }) => {
-    const denied = await assertAllowed(data.by)
+    const denied = await assertAllowed()
     if (denied) return { ok: false as const, message: denied, id: "" }
     const sql = await db()
     await sql`
@@ -113,13 +105,12 @@ export const saveSharedReport = createServerFn({ method: "POST" })
   })
 
 export const removeSharedTile = createServerFn({ method: "POST" })
-  .validator((input: { by: string; reportId: string; tileId: string }) => ({
-    by: cleanEmail(input.by),
+  .validator((input: { reportId: string; tileId: string }) => ({
     reportId: cleanText(input.reportId, "report", 80),
     tileId: cleanText(input.tileId, "visual", 80),
   }))
   .handler(async ({ data }) => {
-    const denied = await assertAllowed(data.by)
+    const denied = await assertAllowed()
     if (denied) return { ok: false as const, message: denied }
     const sql = await db()
     await sql`delete from report_tile where id = ${data.tileId} and report_id = ${data.reportId}`
@@ -127,12 +118,11 @@ export const removeSharedTile = createServerFn({ method: "POST" })
   })
 
 export const removeSharedReport = createServerFn({ method: "POST" })
-  .validator((input: { by: string; id: string }) => ({
-    by: cleanEmail(input.by),
+  .validator((input: { id: string }) => ({
     id: cleanText(input.id, "report", 80),
   }))
   .handler(async ({ data }) => {
-    const denied = await assertAllowed(data.by)
+    const denied = await assertAllowed()
     if (denied) return { ok: false as const, message: denied }
     const sql = await db()
     await sql`delete from report_tile where report_id = ${data.id}`

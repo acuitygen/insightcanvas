@@ -1,29 +1,17 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react"
-import { accessCount, addAllowed, confirmEmail, saveName } from "@/lib/insight/access"
+import { accessCount, claimFirstAdmin, getMe, requestLoginCode, saveName, signOut, verifyLoginCode, type Me } from "@/lib/insight/access"
 
-const STORAGE = "insightcanvas-visitor"
+// Display cache only. The server decides who you are from the httpOnly session cookie.
+let me: Me | null = null
 
-type Visitor = { email: string; firstName: string; lastName: string }
-
-function readVisitor(): Visitor | null {
-  try {
-    const raw = localStorage.getItem(STORAGE)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Visitor
-    if (!parsed.email || !parsed.firstName || !parsed.lastName) return null
-    return parsed
-  } catch {
-    return null
-  }
+export function currentVisitor(): Me | null {
+  return me
 }
 
-function writeVisitor(visitor: Visitor) {
-  localStorage.setItem(STORAGE, JSON.stringify(visitor))
-}
-
-export function currentVisitor(): Visitor | null {
-  if (typeof window === "undefined") return null
-  return readVisitor()
+export async function signOutVisitor() {
+  await signOut()
+  me = null
+  window.location.reload()
 }
 
 function Frame({ title, body, children, onSubmit }: { title: string; body: string; children: ReactNode; onSubmit: (event: FormEvent) => void }) {
@@ -48,39 +36,34 @@ function Frame({ title, body, children, onSubmit }: { title: string; body: strin
 }
 
 function messageOf(error: unknown) {
-  return error instanceof Error ? error.message : "That did not save. Try again."
+  return error instanceof Error ? error.message : "That did not work. Try again."
 }
 
 export function RequireAccess({ children }: { children: ReactNode }) {
-  const [phase, setPhase] = useState<"checking" | "setup" | "email" | "name" | "in">("checking")
+  const [phase, setPhase] = useState<"checking" | "setup" | "email" | "code" | "name" | "in">("checking")
   const [email, setEmail] = useState("")
+  const [code, setCode] = useState("")
+  const [note, setNote] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [error, setError] = useState("")
   const [pending, setPending] = useState(false)
-  const [added, setAdded] = useState<string[]>([])
+
+  function enter(next: Me) {
+    me = next
+    setPhase(next.firstName && next.lastName ? "in" : "name")
+  }
 
   useEffect(() => {
     let cancel = false
     void (async () => {
       try {
+        const current = await getMe()
+        if (cancel) return
+        if (current) return enter(current)
         const status = await accessCount()
         if (cancel) return
-        if (status.count === 0) {
-          setPhase("setup")
-          return
-        }
-        const saved = readVisitor()
-        if (saved) {
-          const check = await confirmEmail({ data: { email: saved.email } })
-          if (cancel) return
-          if (check.allowed) {
-            setPhase("in")
-            return
-          }
-          localStorage.removeItem(STORAGE)
-        }
-        setPhase("email")
+        setPhase(status.needsSetup ? "setup" : "email")
       } catch {
         if (!cancel) setPhase("email")
       }
@@ -90,14 +73,11 @@ export function RequireAccess({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  async function addFirst(event: FormEvent) {
-    event.preventDefault()
+  async function run(task: () => Promise<void>) {
     setPending(true)
     setError("")
     try {
-      await addAllowed({ data: { email } })
-      setAdded((current) => (current.includes(email.trim().toLowerCase()) ? current : [...current, email.trim().toLowerCase()]))
-      setEmail("")
+      await task()
     } catch (caught) {
       setError(messageOf(caught))
     } finally {
@@ -105,38 +85,43 @@ export function RequireAccess({ children }: { children: ReactNode }) {
     }
   }
 
-  async function checkEmail(event: FormEvent) {
+  const claim = (event: FormEvent) => {
     event.preventDefault()
-    setPending(true)
-    setError("")
-    try {
-      const check = await confirmEmail({ data: { email } })
-      if (!check.allowed) {
-        setError("That email is not on the list for this link. Ask the person who sent it to add you.")
-        return
-      }
-      setEmail(check.email)
-      setPhase("name")
-    } catch (caught) {
-      setError(messageOf(caught))
-    } finally {
-      setPending(false)
-    }
+    void run(async () => {
+      await claimFirstAdmin({ data: { email } })
+      await sendCode()
+    })
   }
 
-  async function save(event: FormEvent) {
+  async function sendCode() {
+    const result = await requestLoginCode({ data: { email } })
+    if (!result.ok) throw new Error(result.message)
+    setNote(result.message)
+    setCode("")
+    setPhase("code")
+  }
+
+  const ask = (event: FormEvent) => {
     event.preventDefault()
-    setPending(true)
-    setError("")
-    try {
-      const saved = await saveName({ data: { email, firstName, lastName } })
-      writeVisitor(saved)
+    void run(sendCode)
+  }
+
+  const verify = (event: FormEvent) => {
+    event.preventDefault()
+    void run(async () => {
+      const result = await verifyLoginCode({ data: { email, code } })
+      if (!result.ok || !result.me) throw new Error(result.ok ? "Sign-in failed. Ask for a new code." : result.message)
+      enter(result.me)
+    })
+  }
+
+  const save = (event: FormEvent) => {
+    event.preventDefault()
+    void run(async () => {
+      const saved = await saveName({ data: { firstName, lastName } })
+      if (me) me = { ...me, firstName: saved.firstName, lastName: saved.lastName }
       setPhase("in")
-    } catch (caught) {
-      setError(messageOf(caught))
-    } finally {
-      setPending(false)
-    }
+    })
   }
 
   if (phase === "checking") {
@@ -152,9 +137,9 @@ export function RequireAccess({ children }: { children: ReactNode }) {
   if (phase === "setup") {
     return (
       <Frame
-        title="Who can open this link?"
-        body="Add the email addresses before you share the link. Nothing is sent to an inbox. When someone opens the link, they type that same address, then their name."
-        onSubmit={(event) => void addFirst(event)}
+        title="Set up the first admin"
+        body="This copy of InsightCanvas has no one on its list yet. Enter your email to become the first admin. We'll email you a 6-digit code to sign in, and you can add other people afterwards."
+        onSubmit={claim}
       >
         <label className="grid gap-1 text-sm font-semibold" htmlFor="allow-email">
           Email
@@ -162,27 +147,36 @@ export function RequireAccess({ children }: { children: ReactNode }) {
         </label>
         {error ? <p className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{error}</p> : null}
         <button type="submit" disabled={pending} className="inline-flex min-h-11 items-center justify-center rounded-full bg-ink px-4 text-sm font-semibold text-paper disabled:opacity-60">
-          {pending ? "Saving…" : "Add this email"}
+          {pending ? "Saving…" : "Become admin and send code"}
         </button>
-        {added.length ? (
-          <>
-            <ul className="grid gap-1 text-sm">
-              {added.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-            <button type="button" className="min-h-11 text-sm font-semibold" onClick={() => setPhase("email")}>
-              Continue
-            </button>
-          </>
-        ) : null}
+      </Frame>
+    )
+  }
+
+  if (phase === "code") {
+    return (
+      <Frame title="Enter your code" body={note || "Check your email for a 6-digit code."} onSubmit={verify}>
+        <label className="grid gap-1 text-sm font-semibold" htmlFor="code">
+          6-digit code
+          <input id="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} required value={code} onChange={(event) => setCode(event.target.value)} className="min-h-11 rounded-full border border-line bg-canvas px-4 font-normal" />
+        </label>
+        {error ? <p className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{error}</p> : null}
+        <button type="submit" disabled={pending} className="inline-flex min-h-11 items-center justify-center rounded-full bg-ink px-4 text-sm font-semibold text-paper disabled:opacity-60">
+          {pending ? "Checking…" : "Sign in"}
+        </button>
+        <button type="button" className="min-h-11 text-sm font-semibold" onClick={() => void run(sendCode)} disabled={pending}>
+          Send a new code
+        </button>
+        <button type="button" className="min-h-11 text-sm font-semibold" onClick={() => setPhase("email")}>
+          Use a different email
+        </button>
       </Frame>
     )
   }
 
   if (phase === "name") {
     return (
-      <Frame title="Your name" body={`${email} is on the list. Add the name this preview should remember.`} onSubmit={(event) => void save(event)}>
+      <Frame title="Your name" body={`Signed in as ${me?.email ?? email}. Add the name others will see.`} onSubmit={save}>
         <label className="grid gap-1 text-sm font-semibold" htmlFor="first-name">
           First name
           <input id="first-name" autoComplete="given-name" required value={firstName} onChange={(event) => setFirstName(event.target.value)} className="min-h-11 rounded-full border border-line bg-canvas px-4 font-normal" />
@@ -201,9 +195,9 @@ export function RequireAccess({ children }: { children: ReactNode }) {
 
   return (
     <Frame
-      title="Confirm your email"
-      body="Type the email address this link was shared with. There is no password. If it is on the list, the next screen asks for your name."
-      onSubmit={(event) => void checkEmail(event)}
+      title="Sign in"
+      body="Enter the email address this link was shared with. If it's on the list, we'll email you a 6-digit code."
+      onSubmit={ask}
     >
       <label className="grid gap-1 text-sm font-semibold" htmlFor="email">
         Email
@@ -211,7 +205,7 @@ export function RequireAccess({ children }: { children: ReactNode }) {
       </label>
       {error ? <p className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{error}</p> : null}
       <button type="submit" disabled={pending} className="inline-flex min-h-11 items-center justify-center rounded-full bg-ink px-4 text-sm font-semibold text-paper disabled:opacity-60">
-        {pending ? "Checking…" : "Confirm email"}
+        {pending ? "Sending…" : "Email me a code"}
       </button>
     </Frame>
   )

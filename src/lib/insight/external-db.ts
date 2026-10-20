@@ -1,25 +1,17 @@
 import { createServerFn } from "@tanstack/react-start"
 import { readOnlySql, sslOptions } from "./external-sql"
 
-function cleanEmail(value: unknown) {
-  const email = String(value ?? "").trim().toLowerCase()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Confirm your email first.")
-  return email
-}
-
 export const queryDatabase = createServerFn({ method: "POST" })
-  .validator((input: { by: string; connectionString: string; sql: string }) => {
+  .validator((input: { connectionString: string; sql: string }) => {
     const connectionString = String(input.connectionString ?? "").trim()
     if (!/^postgres(ql)?:\/\//i.test(connectionString) || connectionString.length > 500) {
       throw new Error("Paste a postgres:// connection string. It is used for this query and is not saved.")
     }
-    return { by: cleanEmail(input.by), connectionString, sql: readOnlySql(input.sql) }
+    return { connectionString, sql: readOnlySql(input.sql) }
   })
   .handler(async ({ data }) => {
-    const { getSql } = await import("@/lib/db")
-    const app = await getSql()
-    const allowed = await app<{ email: string }>`select email from allowed_email where email = ${data.by}`
-    if (!allowed.length) return { ok: false as const, message: "Confirm an email on the list before querying a database.", columns: [], rows: [] }
+    const { currentUser } = await import("./auth/session.server")
+    if (!(await currentUser())) return { ok: false as const, message: "Sign in first.", columns: [], rows: [] }
     const { Client } = await import("pg")
     const client = new Client({
       connectionString: data.connectionString,

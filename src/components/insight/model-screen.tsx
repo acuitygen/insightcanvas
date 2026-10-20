@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 import { addAllowed, listAllowed, removeAllowed, type AllowedPerson } from "@/lib/insight/access"
-import { currentVisitor } from "@/components/insight/door"
 import { CATEGORIES, CHANNELS, FORMULAS, METRICS, PRODUCTS, REGIONS } from "@/lib/insight/catalog"
 import { DATA_STATS } from "@/lib/insight/dataset"
 import { useInsight } from "@/lib/insight/store"
@@ -37,11 +36,10 @@ export function ModelScreen() {
 
   async function invitePerson(event: { preventDefault: () => void }) {
     event.preventDefault()
-    const by = currentVisitor()?.email ?? ""
     try {
-      await addAllowed({ data: { email: invite, by } })
+      await addAllowed({ data: { email: invite } })
       setInvite("")
-      setInviteNote("Added. They type this email when they open the link, then their name.")
+      setInviteNote("Added. When they open the link and enter this email, they get a 6-digit code by email.")
       setPeople(await listAllowed())
     } catch (error) {
       setInviteNote(error instanceof Error ? error.message : "Could not add that email.")
@@ -49,9 +47,12 @@ export function ModelScreen() {
   }
 
   async function revoke(email: string) {
-    const by = currentVisitor()?.email ?? ""
-    await removeAllowed({ data: { email, by } })
-    setPeople(await listAllowed())
+    try {
+      await removeAllowed({ data: { email } })
+      setPeople(await listAllowed())
+    } catch (error) {
+      setInviteNote(error instanceof Error ? error.message : "Could not remove that email.")
+    }
   }
 
   function draft() {
@@ -92,7 +93,7 @@ export function ModelScreen() {
 
       <section className="grid gap-3 rounded-[1.25rem] bg-blush p-4 md:p-6">
         <h2 className="text-2xl tracking-tight">People who can open the link</h2>
-        <p className="max-w-2xl text-sm">Nothing is emailed. Add the address here, send them the link, and they confirm that same address before giving their name.</p>
+        <p className="max-w-2xl text-sm">Only admins can change this list. Add the address here and send them the link: they sign in with a 6-digit code emailed to that address.</p>
         <form className="flex flex-wrap gap-2" onSubmit={(event) => void invitePerson(event)}>
           <label className="sr-only" htmlFor="invite-email">Email</label>
           <input id="invite-email" type="email" required value={invite} onChange={(event) => setInvite(event.target.value)} placeholder="name@company.com" className="min-h-11 min-w-0 flex-1 rounded-full border border-line bg-paper px-4" />
@@ -104,6 +105,7 @@ export function ModelScreen() {
             <li key={person.email} className="flex flex-wrap items-center justify-between gap-2 rounded-full bg-paper px-4 py-2">
               <span>
                 <span className="font-semibold">{person.email}</span>
+                {person.isAdmin ? <span className="text-sm text-muted"> · admin</span> : null}
                 {person.firstName ? <span className="text-sm text-muted"> · {person.firstName} {person.lastName}</span> : <span className="text-sm text-muted"> · name not entered yet</span>}
               </span>
               <button type="button" className={quiet} onClick={() => void revoke(person.email)}>Remove</button>

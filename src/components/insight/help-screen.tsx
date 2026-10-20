@@ -51,7 +51,7 @@ export function HelpScreen() {
           <li><span className="font-semibold">Ask.</span> A sentence about the shop extract becomes one chart, the SQL, and the table.</li>
           <li><span className="font-semibold">One-click starters.</span> Reports, then Practice week or Shop month, fills a page. You do not arrange the charts.</li>
           <li><span className="font-semibold">Drop a file.</span> CSV, JSON, and Excel. Dates and amounts are recognized. No one has to clean the sheet by hand.</li>
-          <li><span className="font-semibold">Share a link.</span> Add an email on Model. The person confirms that email and types their name. There is no Microsoft account and no password.</li>
+          <li><span className="font-semibold">Share a link.</span> An admin adds an email on Model. The person enters that email and signs in with a 6-digit code sent to it. There is no password.</li>
         </ul>
         <p className="text-sm">Not in this version: live connections to Jane, Athenahealth, QuickBooks, or Xero, a Microsoft 365 sign-in, or department row-level security.</p>
       </section>
@@ -88,10 +88,10 @@ export function HelpScreen() {
       <section id="add-user" className="grid scroll-mt-6 gap-3 rounded-[1.25rem] bg-canvas p-4">
         <h2 className="text-2xl tracking-tight">How to add a new user</h2>
         <ol className="grid gap-2 text-sm">
-          <li><span className="font-semibold">1. First address.</span> Before anyone else opens the link, the setup screen asks who can open it. Type an email and press Add this email. Add the others, then press Continue.</li>
-          <li><span className="font-semibold">2. Later addresses.</span> Open Model. Under People who can open the link, type the email and press Add email.</li>
-          <li><span className="font-semibold">3. Nothing is emailed.</span> Send the person the link yourself. They type that same email. There is no password. The next screen asks for their first name and last name.</li>
-          <li><span className="font-semibold">4. Remove someone.</span> On Model, press Remove next to their email. They can no longer confirm that address.</li>
+          <li><span className="font-semibold">1. First address.</span> The first person to open a new copy enters their email and becomes the admin. A 6-digit code is emailed to sign in.</li>
+          <li><span className="font-semibold">2. Later addresses.</span> An admin opens Model. Under People who can open the link, type the email and press Add email.</li>
+          <li><span className="font-semibold">3. Sign-in code.</span> Send the person the link yourself. They enter that same email, get a 6-digit code by email, valid once for 10 minutes, then give their name.</li>
+          <li><span className="font-semibold">4. Remove someone.</span> On Model, press Remove next to their email. Their sessions end and they can no longer sign in.</li>
         </ol>
         <Link to="/model" className={quiet}>Go to Model</Link>
       </section>
