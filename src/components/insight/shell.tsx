@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router"
 import type { ReactNode } from "react"
-import { RequireAccess } from "./door"
+import { RequireAccess, signOutVisitor } from "./door"
 
 const LINKS = [
   { to: "/", label: "Ask" },
@@ -60,6 +60,9 @@ function ShellFrame({ children }: { children: ReactNode }) {
               )
             })}
           </nav>
+          <button type="button" className="min-h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-muted" onClick={() => void signOutVisitor()}>
+            Sign out
+          </button>
             <p className="ml-auto hidden items-center gap-2 rounded-full bg-sage px-3 py-2 text-sm font-semibold sm:flex">
               <span className="size-2 rounded-full bg-teal" aria-hidden="true" />
               Read-only extract

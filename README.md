@@ -4,7 +4,7 @@
 
 **Ask a plain-English question about your sales data and get the SQL, the plan and an accessible chart, with every step shown.**
 
-> **Status: pre-alpha prototype.** It runs and deploys, but it is **not safe for real or confidential data yet**. The sign-in is an email list with no verification (see Known limits). The product goals, including a local language model, SQL Server and a full SQL parser, are in [`docs/PRD.md`](docs/PRD.md). This README describes what the code does today.
+> **Status: pre-alpha prototype.** It runs and deploys, but it is **not ready for real or confidential data yet** (see Known limits). Sign-in uses emailed one-time codes. The product goals, including a local language model, SQL Server and a full SQL parser, are in [`docs/PRD.md`](docs/PRD.md). This README describes what the code does today.
 
 ## What it does today
 
@@ -13,7 +13,8 @@
 - **Built-in demo dataset.** Questions run against a generated retail dataset (`lumen_retail` model v3, as of 16 Oct 2026), held in memory. It covers orders, products, regions, channels and returns. Ask answers do not query your database.
 - **Time intelligence.** Month, quarter and year to date; the fiscal year starts in April; prior period; same period last year; rolling calendar windows; and missing periods filled from a date spine. Partial periods are labelled, and 29 February maps to 28 February in year-over-year comparisons, with a note saying so.
 - **Charts:** bar and column, line, area, pie and donut, waterfall, radar, combination and timeline, plus a data table every time.
-- **Model page.** Confirm the returns relationship, certify formulas such as average selling price, and manage the email list.
+- **Sign-in.** Only addresses on the allow-list can get in, using a 6-digit code sent by email (details below).
+- **Model page.** Confirm the returns relationship, certify formulas such as average selling price, and (for admins) manage the email list.
 - **Sources page.** Add CSV, Excel or JSON files. You can also run one read-only SELECT against an outside Postgres database by pasting its `postgres://` address, which is used for that query only and not saved. There is also a mail search for Gmail or Outlook, through the Grok app connector.
 - **Reports.** Pin tiles to shared reports, which are saved in the app database. Export a chart as a self-contained HTML file with a strict Content-Security-Policy and no network calls.
 - **Audit page.** Lists questions, SQL and outcomes. This log is kept in the browser's local storage, can be cleared by the user, and is not a server audit trail yet.
@@ -36,6 +37,22 @@ There is **no language model in this build**. Every step is plain, deterministic
 5. **Present.** Pick a chart type from the shape of the result, and add a text summary and the data table.
 
 `pipeline.ts` ties the steps together, and `collectProblems()` is a built-in self-check that the tests also run.
+
+## Sign-in
+
+- **How it works.** You enter your email and get a **6-digit code** by email. The code is random, stored only as an HMAC (keyed with `INSIGHT_AUTH_SECRET`), valid for **10 minutes**, works **once**, and is discarded after 5 wrong guesses. Checks are constant-time.
+- **Same answer either way.** The reply is identical whether or not the email is on the list, and a failed delivery is only logged on the server.
+- **Rate limits** count every request, listed or not, over 15 minutes: 5 code requests per email and 20 per IP; 10 verify attempts per email and 50 per IP.
+- **Session.** A successful code sets an `ic_session` cookie that is **httpOnly, SameSite=Lax, and Secure in production**. It holds a random 32-byte token, and only its SHA-256 is stored. Sessions last 7 days and end on sign-out, or when the person is removed from the list.
+- **Identity comes from the session only.** Every server function (reports, outside-database queries, mail search, the list itself) works out who you are from the session cookie and never from an email the browser sends.
+- **Admins and the list.** Viewing the list needs a session, and only **admins** can add or remove people. Admins can't remove themselves.
+- **First admin.** The first person to open a new copy becomes the admin. Set `INSIGHT_BOOTSTRAP_EMAIL` to allow only one address to claim that. For existing databases, migration `0004_email_otp.sql` makes the earliest address on the list the admin.
+- **Sending email:**
+  - `RESEND_API_KEY` set: the [Resend](https://resend.com) API is used.
+  - Otherwise, `SMTP_URL` set: that SMTP server is used.
+  - Either way, set `INSIGHT_MAIL_FROM` as the sender address.
+  - In local development with neither set, the code is printed to the server console.
+  - In production with neither set, no email is sent and nobody can sign in.
 
 ## Outside Postgres queries (Sources page)
 
@@ -117,6 +134,11 @@ That preview listens on [http://127.0.0.1:8081](http://127.0.0.1:8081).
 | --- | --- | --- |
 | `DATABASE_URL` | Only for a shared deploy | Postgres URL. Empty means the built-in database. |
 | `VITE_AUTH_ENABLED` | No | Leave it `false`. |
+| `INSIGHT_AUTH_SECRET` | **Yes in production** | A random string of at least 32 characters, e.g. `openssl rand -hex 32`. Keys the code hashes. Without it in production, sign-in is refused. |
+| `RESEND_API_KEY` | One mail option is required in production | Resend API key, for sending sign-in codes |
+| `SMTP_URL` | One mail option is required in production | Alternative to Resend, e.g. `smtps://user:pass@smtp.example.com:465` |
+| `INSIGHT_MAIL_FROM` | With Resend or SMTP | Sender address, e.g. `InsightCanvas <login@acuitygen.com>`. It must be a domain the provider has verified. |
+| `INSIGHT_BOOTSTRAP_EMAIL` | Recommended | The only address allowed to become the first admin on a new database |
 | `INSIGHT_EXTERNAL_DB_TLS_INSECURE` | No | `true` turns off certificate checks for outside databases. Leave it unset. |
 
 ## Checks and tests
@@ -133,6 +155,13 @@ npm run test:template # app-builder template tooling tests; needs the builder's 
 
 ## What was tested
 
+- **Sign-in** (`src/lib/insight/auth/core.test.ts`, run against an in-memory Postgres):
+  - codes stored only as hashes, sent only to listed addresses, with the same answer for unknown ones
+  - single use, 10-minute expiry, lockout after wrong guesses, a new code replacing the old one
+  - rate limits by email and by IP
+  - sessions ending on removal and on sign-out
+  - mail sender selection
+  - a source check that no server function accepts a client-sent email
 - **SQL gateway** (`src/lib/insight/__tests__/validate.test.ts`):
   - allowed queries, plus the original attack strings
   - 16 bypass attempts found in review, all now refused: comma joins, quoted identifiers, `TABLE`, a CTE named after a blocked function, `--` inside a string, a LIMIT only in a subquery or string, nested comments, escape and dollar strings, `FETCH`, `ONLY`
@@ -142,7 +171,8 @@ npm run test:template # app-builder template tooling tests; needs the builder's 
 
 ## Known limits
 
-- **No real authentication.** The door is an email allow-list, and the server trusts the email the browser sends. Anyone who knows or can see an allowed address can act as that person. Don't deploy it publicly with real data until sign-in is fixed (planned: emailed one-time codes).
+- **Sign-in is new.** The emailed code is the only factor, so anyone who can read your inbox can sign in. The first-admin claim is open on an empty database unless `INSIGHT_BOOTSTRAP_EMAIL` is set. Rate limits live in the app database, with no CAPTCHA. There is no separate check against cross-site request forgery: it relies on SameSite=Lax cookies and TanStack's POST server functions.
+- **Everyone signed in sees all shared reports.** There are no per-report permissions.
 - **Ask uses only the demo dataset.** It doesn't query your own database, and the README's earlier claims of a local Ollama model, SQL Server, a full AST parser and scoped embed tokens describe goals, not this build.
 - **The audit log is in the browser** and can be cleared.
 - **Outside-database queries** don't verify SELECT-only accounts or restrict hosts.

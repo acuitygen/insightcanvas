@@ -3,7 +3,6 @@ import { queryDatabase } from "@/lib/insight/external-db"
 import { searchMail, type MailMessage } from "@/lib/insight/mail"
 import { parseCsv, parseExcel, parseJson, sheetFromRecords, type Sheet } from "@/lib/insight/sheets"
 import { publishReport, refreshSharedReports } from "@/lib/insight/shared-client"
-import { currentVisitor } from "@/components/insight/door"
 import { useInsight, useInsightReady } from "@/lib/insight/store"
 import { fieldKindLabel, resultFromTile, tileFromSheet } from "@/lib/insight/table-visual"
 import type { VisualFamily } from "@/lib/insight/types"
@@ -224,8 +223,7 @@ function LiveConnections() {
     setBusy("db")
     setDbNote("")
     try {
-      const by = currentVisitor()?.email ?? ""
-      const result = await queryDatabase({ data: { by, connectionString, sql } })
+      const result = await queryDatabase({ data: { connectionString, sql } })
       setColumns(result.columns)
       setRows(result.rows)
       setDbNote(result.message)

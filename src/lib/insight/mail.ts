@@ -41,6 +41,8 @@ export const searchMail = createServerFn({ method: "POST" })
     query: String(input.query ?? "").trim().slice(0, 300) || "newer_than:7d",
   }))
   .handler(async ({ data }) => {
+    const { currentUser } = await import("./auth/session.server")
+    if (!(await currentUser())) return { ok: false as const, message: "Sign in first.", loginUrl: "", messages: [] as MailMessage[] }
     const { callTool } = await import("@/lib/app-data/client.server")
     const mailbox = data.mailbox === "Outlook" ? "Outlook" : "Gmail"
     const connectorType = mailbox === "Outlook" ? ConnectorType.Outlook : ConnectorType.Gmail
