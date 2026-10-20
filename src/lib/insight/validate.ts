@@ -1,4 +1,5 @@
 import { ALLOWED_TABLES } from "./catalog"
+import { relationRefs, scanSql, tokenize } from "./sql-scan"
 import type { EngineCtx, SqlVerdict } from "./types"
 
 const ALLOWED_FN = new Set([
@@ -92,7 +93,9 @@ export function stripSqlComments(sql: string): string {
 }
 
 export function validateSql(sql: string, ctx: EngineCtx = { returnsConfirmed: true, certifiedFormulas: [] }): SqlVerdict {
-  const stripped = stripSqlComments(sql).trim()
+  const scanned = scanSql(sql)
+  if (!scanned.ok) return { ok: false, message: scanned.message }
+  const stripped = scanned.text.trim()
   if (!stripped) return { ok: false, message: "The statement is empty." }
 
   const parts = stripped
@@ -123,6 +126,10 @@ export function validateSql(sql: string, ctx: EngineCtx = { returnsConfirmed: tr
     return { ok: false, message: "Anonymous code blocks are rejected." }
   }
 
+  if (/\btable\b/i.test(body)) {
+    return { ok: false, message: "TABLE shorthand is rejected. Name the columns you need." }
+  }
+
   if (/\b(pg_[a-z0-9_]*|dblink|lo_import|lo_export|lo_from_bytea)\b/i.test(body)) {
     return { ok: false, message: "System and external-access functions are rejected." }
   }
@@ -138,25 +145,33 @@ export function validateSql(sql: string, ctx: EngineCtx = { returnsConfirmed: tr
     return { ok: false, message: "That column is outside the published model." }
   }
 
-  const limit = body.match(/\blimit\s+(\d+)\b/i)
-  if (!limit) {
+  const tokens = tokenize(body)
+
+  // The row cap applies to the outer query: the statement must end with LIMIT n [OFFSET m].
+  const top = tokens.filter((tok) => tok.depth === 0)
+  const tail = top.map((tok) => tok.t)
+  let end = tail.length
+  if (tail[end - 2] === "offset" && /^\d+$/.test(tail[end - 1] ?? "")) end -= 2
+  if (tail[end - 2] !== "limit" || !/^\d+$/.test(tail[end - 1] ?? "")) {
     return {
       ok: false,
       message: "A numeric LIMIT is required. The row cap is a gateway rule, not a database default.",
     }
   }
-  if (Number(limit[1]) > 5000) {
+  if (Number(tail[end - 1]) > 5000) {
     return { ok: false, message: "LIMIT exceeds the connection cap of 5,000 rows." }
+  }
+  if (tail.includes("fetch")) {
+    return { ok: false, message: "FETCH is rejected. Use LIMIT so the row cap can be checked." }
   }
 
   const cteNames = new Set<string>()
-  for (const match of body.matchAll(/\b([a-z_][\w]*)\s+as\s*\(/gi)) {
+  for (const match of body.matchAll(/\b([a-z_][\w]*)\s*(?:\([^()]*\))?\s+as\s*\(/gi)) {
     cteNames.add(match[1].toLowerCase())
   }
 
   const allowed = new Set(ALLOWED_TABLES)
-  for (const match of body.matchAll(/\b(?:from|join)\s+([a-z_][\w.]*)/gi)) {
-    const name = match[1].toLowerCase()
+  for (const name of relationRefs(tokens)) {
     if (cteNames.has(name) || ALLOWED_FN.has(name)) continue
     if (!name.includes(".")) {
       return { ok: false, message: `Relation ${name} is not a CTE or an approved table.` }
@@ -172,9 +187,13 @@ export function validateSql(sql: string, ctx: EngineCtx = { returnsConfirmed: tr
     }
   }
 
-  for (const match of body.matchAll(/\b([a-z_][\w]*)\s*\(/gi)) {
-    const name = match[1].toLowerCase()
-    if (NOT_FN.has(name) || cteNames.has(name)) continue
+  for (let k = 0; k < tokens.length - 1; k++) {
+    if (tokens[k + 1].t !== "(") continue
+    const name = tokens[k].t
+    if (!/^[a-z_][\w.]*$/.test(name) || NOT_FN.has(name)) continue
+    // A CTE name followed by "(" is only a definition (WITH x(a, b) AS ...), never a call.
+    const prev = tokens[k - 1]?.t
+    if (cteNames.has(name) && (prev === "with" || prev === "," || prev === "recursive")) continue
     if (!ALLOWED_FN.has(name)) {
       return { ok: false, message: `Function ${name} is not on the approved list.` }
     }

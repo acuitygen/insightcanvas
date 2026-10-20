@@ -1,69 +1,65 @@
 # InsightCanvas
 
-**Plain-English questions in. Validated SQL and accessible charts out. Your data never leaves your network.**
+[![CI](https://github.com/acuitygen/insightcanvas/actions/workflows/ci.yml/badge.svg)](https://github.com/acuitygen/insightcanvas/actions/workflows/ci.yml)
 
-InsightCanvas connects to your relational database, lets you confirm how your tables relate, and turns questions such as *"monthly revenue this fiscal year versus last, West region"* into a validated SQL query and a customisable chart. The SQL is always visible, along with the calculation logic and the data table behind every chart. Everything, including the language model, runs inside your own environment.
+**Ask a plain-English question about your sales data and get the SQL, the plan and an accessible chart, with every step shown.**
 
-> **Status: pre-alpha.** The app in this repository can be run and deployed. It is not production-ready for real patient records.
+> **Status: pre-alpha prototype.** It runs and deploys, but it is **not safe for real or confidential data yet**. The sign-in is an email list with no verification (see Known limits). The product goals, including a local language model, SQL Server and a full SQL parser, are in [`docs/PRD.md`](docs/PRD.md). This README describes what the code does today.
 
-## Why it exists
+## What it does today
 
-Getting a chart from a database today means waiting for an analyst to write SQL, or learning a BI tool's modelling language. Both put days between a question and its answer, and the result stays locked inside the BI tool. InsightCanvas is not a full BI platform. It is the fastest safe path from one clear question to one trustworthy, embeddable visual.
-
-## What it does
-
-- **Connects read-only** to PostgreSQL first, then SQL Server. The connection is refused unless the database account is SELECT-only.
-- **Models your data.** Foreign keys are suggestions only. An operator confirms key pairs, cardinality and join type, names fields in business terms and certifies shared measures.
-- **Answers plain-English questions and formulas.** It asks a clarifying question rather than guessing when a request is ambiguous.
-- **Shows its working.** Every result carries the SQL, a plan summary and the data table.
-- **Handles time intelligence.** Month, quarter and year to date, prior period, same period last year, year-over-year absolute and percent, rolling calendar windows, and configurable fiscal years (April start supported).
-- **Renders the common chart types.** Bar and column, line, area, pie and donut, waterfall, radar, combination and timeline, plus an always-available data table.
-- **Exports safe HTML.** Self-contained snapshots that make no network calls, or authenticated live embeds inside the client environment.
+- **Ask.** Type a question such as *"Revenue by month, fiscal year to date"* or *"Top 8 products by revenue, year to date"*. You get a chart, the data table, the plan and the SQL.
+- **Asks instead of guessing.** For example, "sales" could mean revenue, units or orders, and "by date" could mean order date or ship date. In those cases it asks you to choose before compiling anything.
+- **Built-in demo dataset.** Questions run against a generated retail dataset (`lumen_retail` model v3, as of 16 Oct 2026), held in memory. It covers orders, products, regions, channels and returns. Ask answers do not query your database.
+- **Time intelligence.** Month, quarter and year to date; the fiscal year starts in April; prior period; same period last year; rolling calendar windows; and missing periods filled from a date spine. Partial periods are labelled, and 29 February maps to 28 February in year-over-year comparisons, with a note saying so.
+- **Charts:** bar and column, line, area, pie and donut, waterfall, radar, combination and timeline, plus a data table every time.
+- **Model page.** Confirm the returns relationship, certify formulas such as average selling price, and manage the email list.
+- **Sources page.** Add CSV, Excel or JSON files. You can also run one read-only SELECT against an outside Postgres database by pasting its `postgres://` address, which is used for that query only and not saved. There is also a mail search for Gmail or Outlook, through the Grok app connector.
+- **Reports.** Pin tiles to shared reports, which are saved in the app database. Export a chart as a self-contained HTML file with a strict Content-Security-Policy and no network calls.
+- **Audit page.** Lists questions, SQL and outcomes. This log is kept in the browser's local storage, can be cleared by the user, and is not a server audit trail yet.
 
 ## How a question becomes a chart
 
-The language model never writes SQL. It proposes a structured plan, and deterministic code does the rest. A failure at any stage stops with a plain-English message.
+There is **no language model in this build**. Every step is plain, deterministic TypeScript in `src/lib/insight/`.
 
-1. **Resolve.** Match the question to the published semantic model. Unknown terms trigger a clarifying question.
-2. **Plan.** The local model receives only authorised metadata and returns a typed plan: metrics, dimensions, filters, date role, grain, join path and visual family.
-3. **Compile.** Deterministic code produces dialect-specific SQL. Joins come only from confirmed relationships.
-4. **Validate.** The SQL is parsed to an AST. Only a single SELECT is allowed. Writes, DDL, stacked statements, unapproved functions and tables outside the model are rejected, and row, column and LIMIT policy is enforced.
-5. **Execute.** The query runs on a pooled SELECT-only connection with a timeout and row cap, and is cancelled at the database on timeout or user abort.
-6. **Present.** The result's shape picks a recommended visual.
+1. **Resolve and plan** (`planner.ts`). Match words to the catalog of certified metrics, dimensions, filters, date roles and time phrases, and produce a typed plan. Unknown or ambiguous terms return a clarifying question, and unsupported ones are refused.
+2. **Compile** (`compile.ts`). Turn the plan into Postgres-dialect SQL, with literals passed as parameters and joins taken only from the model.
+3. **Validate** (`validate.ts`, `sql-scan.ts`). The same check runs on SQL that you edit.
+   - The SQL is lexed (strings and comments handled the way Postgres reads them), then checked against rules:
+     - one SELECT or WITH statement only
+     - no writes, DDL, `INTO`, `DO`, `TABLE` shorthand or `SELECT *`
+     - no quoted identifiers, escape or dollar-quoted strings
+     - only approved tables (including comma-joined ones) and approved functions
+     - an outer `LIMIT` no higher than 5,000 is required
+   - This is a lexer plus rules, **not a full SQL parser (AST)**.
+4. **Execute** (`execute.ts`). Run the plan against the in-memory demo dataset.
+5. **Present.** Pick a chart type from the shape of the result, and add a text summary and the data table.
 
-## Correctness first
+`pipeline.ts` ties the steps together, and `collectProblems()` is a built-in self-check that the tests also run.
 
-A plausible wrong chart is the worst outcome for this product, so correctness is enforced in the design:
+## Outside Postgres queries (Sources page)
 
-- **Join safety.** Measures are aggregated at their own grain before joining, or the unsafe plan is rejected. Ambiguous join paths and multiple date roles need an explicit choice, never a silent substitution.
-- **Formula rules.** Ratios divide aggregates, never average percentages. Nulls are preserved unless explicitly mapped. A zero denominator returns null with an explanation. Mixed currencies are rejected without a declared conversion.
-- **Time rules.** Partial periods are labelled. Missing dates come from a date spine. Rolling windows use calendar ranges, not the last N rows. On a leap day, the default prior-year mapping clamps 29 February to 28 February and says so.
-- **Versioned models.** Queries pin a published model version. A schema break marks dependent visuals stale instead of silently remapping them.
+Pasted SQL is checked and run on the server (`external-sql.ts`, `external-db.ts`):
 
-Targets for v1, checked on a frozen evaluation set with golden fixtures: at least 90% exact match on supported questions, at least 90% of ambiguous questions trigger clarification before execution, and every case in the attack corpus is blocked.
+- **Checks:**
+  - one SELECT or WITH statement, no semicolons, comments removed before running
+  - no write or session-changing keywords, no row locks
+  - blocked functions: `pg_*`, `dblink*`, `lo_*`, `set_config`, `current_setting`, the `*_to_xml` family, `xpath`, `txid_*`, `nextval` and `setval`
+- **Read-only transaction:** the query runs inside `BEGIN TRANSACTION READ ONLY` with an 8-second statement timeout and is always rolled back. It's wrapped in an outer `LIMIT 200`.
+- **TLS certificates are verified** for any host that isn't local. To turn checks off for a test database you control, set `INSIGHT_EXTERNAL_DB_TLS_INSECURE=true`.
+- **Not done yet:**
+  - It doesn't check that the database account is SELECT-only. Use a read-only role.
+  - It doesn't restrict which hosts the server may connect to.
 
-## Security
+## Tech stack
 
-OWASP Top 10 (2025 categories) is the baseline, with concrete controls for broken access control, SQL and HTML injection, cryptographic failures, insecure design and logging. OWASP ASVS Level 2 principles are applied to the critical path. There is no claim of full formal verification in v1.
-
-- Self-hosted: credentials, schema metadata, plans, SQL and results stay in the client's environment, and no external model endpoint is called.
-- Credentials live in a secrets vault local to the deployment. The browser never receives them.
-- An AST-level SQL gateway with parameterised literals, identifier allow-lists and row and column policy enforced on every reference, including CTEs and subqueries.
-- Edited SQL passes the same parse, policy and budget checks. Execution is bound to a short-lived server-side plan hash.
-- The model sees only curated metadata. Its output is a constrained plan that is validated outside the model.
-- HTML output is a structured specification rendered by trusted code. No arbitrary JavaScript, no external resources, escaped embedded JSON.
-- Live embeds use short-lived scoped tokens, a restrictive CSP and a frame-ancestor allow-list. Expired or revoked tokens return no data.
-- An audit log records user, question, SQL, row count and duration. Secrets are never logged.
-
-## Accessibility
-
-Targets **WCAG 2.2 Level AA**: contrast, full keyboard operation, visible focus, reduced-motion support, and a text summary plus data-table alternative behind every chart.
+TanStack Start (React 19, Vite, Nitro), Tailwind CSS 4, Recharts, zustand, and Kysely with `pg` or PGLite for the app database. Deploys on Vercel through Nitro's Vercel preset. `node:test` with `tsx` for tests.
 
 ## Deploy
 
 The runnable app is the repository root (`package.json`, `src/`, `migrations/`). It does not need a GPU or a local language model. Questions in this build are planned by the app itself.
 
-You need Node.js 22 or newer, and npm.
+You need Node.js 22 or newer (`engines` in `package.json` says so), and npm.
 
 ### Run it on your machine
 
@@ -115,6 +111,45 @@ npm run preview
 
 That preview listens on [http://127.0.0.1:8081](http://127.0.0.1:8081).
 
+### Environment variables
+
+| Variable | Required | What to set |
+| --- | --- | --- |
+| `DATABASE_URL` | Only for a shared deploy | Postgres URL. Empty means the built-in database. |
+| `VITE_AUTH_ENABLED` | No | Leave it `false`. |
+| `INSIGHT_EXTERNAL_DB_TLS_INSECURE` | No | `true` turns off certificate checks for outside databases. Leave it unset. |
+
+## Checks and tests
+
+```bash
+npm run typecheck
+npm run lint
+npm test              # product tests: SQL gateway, outside-database checks, planner, compiler, time
+npm run build:app     # build without applying migrations
+npm run test:template # app-builder template tooling tests; needs the builder's .grok/ folder, so not run in CI
+```
+
+**CI** (`.github/workflows/ci.yml`) runs typecheck, lint, tests and `build:app` on Node 22 for every push and pull request.
+
+## What was tested
+
+- **SQL gateway** (`src/lib/insight/__tests__/validate.test.ts`):
+  - allowed queries, plus the original attack strings
+  - 16 bypass attempts found in review, all now refused: comma joins, quoted identifiers, `TABLE`, a CTE named after a blocked function, `--` inside a string, a LIMIT only in a subquery or string, nested comments, escape and dollar strings, `FETCH`, `ONLY`
+- **Outside-database checks:** blocked functions, writes inside CTEs, row locks, a trailing comment that tried to remove the row cap, and the TLS defaults.
+- **Planner → compiler → gateway:** sample questions compile to SQL the gateway accepts, with literals kept as parameters. Ambiguous and uncertified requests clarify or block.
+- **Time helpers:** leap days, fiscal year, to-date ranges, prior period, same period last year, date spines.
+
+## Known limits
+
+- **No real authentication.** The door is an email allow-list, and the server trusts the email the browser sends. Anyone who knows or can see an allowed address can act as that person. Don't deploy it publicly with real data until sign-in is fixed (planned: emailed one-time codes).
+- **Ask uses only the demo dataset.** It doesn't query your own database, and the README's earlier claims of a local Ollama model, SQL Server, a full AST parser and scoped embed tokens describe goals, not this build.
+- **The audit log is in the browser** and can be cleared.
+- **Outside-database queries** don't verify SELECT-only accounts or restrict hosts.
+- **Mail search goes through the Grok connector**, so it depends on that platform. Data shown there leaves your network.
+- **`xlsx` 0.18.5** has a known high-severity advisory for crafted files.
+- **The repo still contains app-builder template files** (`AGENTS.md`, `public/__grok`, the PWA plugin, `scripts/*.test.mjs`).
+
 ## Roadmap
 
 | Phase | Scope |
@@ -123,36 +158,23 @@ That preview listens on [http://127.0.0.1:8081](http://127.0.0.1:8081).
 | 2 | Formulas, time intelligence including edge cases, remaining chart types, SQL Server, stronger SQL gateway tests |
 | 3 | Authenticated embeds inside the client environment, version history, polish, accessibility audit |
 
-A phase exits only when its correctness fixtures and safety tests pass, with no unresolved high-severity security issues.
-
 **Out of scope for v1:** multi-tenant SaaS, public anonymous embeds, write-back, scheduled refresh, cross-database federation, native mobile apps, arbitrary user JavaScript, and multi-page dashboards with cross-filtering.
 
-## Tech stack
-
-The stack is chosen during the Phase 1 spike. Fixed constraints:
-
-- **Language model:** the latest capable open-weight model served locally through Ollama, with a strict plan schema so poor output is rejected early. The model can be updated without changing the rest of the pipeline.
-- **Charts:** rendered by AcuityGen's own trusted code from a structured specification.
-
-## Repository layout (proposed)
+## Repository layout
 
 ```
-docs/          PRD, threat model, architecture decisions
-app/           web application (editor and viewer)
-engine/        resolve, plan, compile, validate, execute pipeline
-connectors/    one adapter per database dialect
-eval/          frozen evaluation set, attack corpus, golden fixtures
-deploy/        container images, installer, upgrade and rollback scripts
+src/lib/insight/   planner, compiler, SQL gateway, demo dataset, time helpers, server functions
+src/components/    screens (Ask studio, Model, Sources, Reports, Audit, Help, Embed)
+src/routes/        TanStack routes
+migrations/        app database (email list, reports); migrations/auth only when sign-in is on
+docs/PRD.md        product requirements (v1.4)
+archive/           the retired clinic book, not compiled
+scripts/           build, migration and template tooling
 ```
-
-## Documentation
-
-- `docs/PRD.md`: full product requirements (v1.4)
-- `CONTRIBUTING.md`: not accepting outside contributions during pre-alpha
 
 ## Licence
 
-Proprietary, all rights reserved, AcuityGen LLP. This is an assumption, made because the product is sold for deployment in client environments. Not yet confirmed.
+Proprietary, all rights reserved, AcuityGen LLP (not yet confirmed; there's no licence file). `CONTRIBUTING.md`: not accepting outside contributions during pre-alpha.
 
 ## Owner
 

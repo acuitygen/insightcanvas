@@ -1,20 +1,10 @@
 import { createServerFn } from "@tanstack/react-start"
+import { readOnlySql, sslOptions } from "./external-sql"
 
 function cleanEmail(value: unknown) {
   const email = String(value ?? "").trim().toLowerCase()
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Confirm your email first.")
   return email
-}
-
-function readOnlySql(value: unknown) {
-  const sql = String(value ?? "").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--.*$/gm, " ").trim()
-  if (!sql || sql.length > 4000) throw new Error("Enter one SELECT, up to 4000 characters.")
-  if (sql.includes(";")) throw new Error("Send a single statement, with no semicolon.")
-  if (!/^(select|with)\b/i.test(sql)) throw new Error("Only a SELECT is allowed.")
-  if (/\b(insert|update|delete|drop|alter|create|grant|revoke|copy|truncate|call|do|execute)\b/i.test(sql)) {
-    throw new Error("That statement is not read-only.")
-  }
-  return `select * from (${sql}) as insight_q limit 200`
 }
 
 export const queryDatabase = createServerFn({ method: "POST" })
@@ -35,11 +25,20 @@ export const queryDatabase = createServerFn({ method: "POST" })
       connectionString: data.connectionString,
       connectionTimeoutMillis: 8000,
       statement_timeout: 8000,
-      ssl: /localhost|127\.0\.0\.1/.test(data.connectionString) ? undefined : { rejectUnauthorized: false },
+      ssl: sslOptions(data.connectionString),
     })
     try {
       await client.connect()
-      const result = await client.query(data.sql)
+      // Belt and braces: even if a write slipped past the text checks, a READ ONLY
+      // transaction makes Postgres refuse it. The transaction is always rolled back.
+      await client.query("begin transaction read only")
+      await client.query("set local statement_timeout = 8000")
+      let result
+      try {
+        result = await client.query(data.sql)
+      } finally {
+        await client.query("rollback").catch(() => undefined)
+      }
       const columns = result.fields.map((field) => field.name).slice(0, 12)
       const rows = result.rows.slice(0, 200).map((row) => {
         const out: Record<string, string | number | null> = {}

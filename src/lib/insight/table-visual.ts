@@ -1,4 +1,4 @@
-import type { ChartModel, Column, QueryResult, Row, VisualFamily } from "./types"
+import type { ChartModel, Column, QueryResult, VisualFamily } from "./types"
 import type { FieldKind, Sheet } from "./sheets"
 
 export type Tile = {
