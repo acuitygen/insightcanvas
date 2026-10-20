@@ -33,10 +33,19 @@ Copyright (c) 2026 AcuityGen LLP, India. All rights reserved.
    claim arose.
 
 5. Governing law and jurisdiction. This licence is governed by the laws of
-   India. Subject to any written agreement, the courts at [CITY — TO BE
-   CONFIRMED], India have exclusive jurisdiction.
+   India. Subject to any written agreement, the courts at Panvel, Raigad
+   district, Maharashtra, India have exclusive jurisdiction.
 
-6. Termination. Any unauthorised use automatically ends any rights a person
+6. Confidentiality and trade secrets. The Software's source code,
+   documentation and designs are confidential information and trade secrets
+   of AcuityGen. Anyone who receives them must keep them strictly
+   confidential, must not disclose them to any third party, and may use them
+   only as expressly permitted by a written licence from AcuityGen. These
+   obligations survive the expiry or termination of any licence or access.
+   When AcuityGen asks, the recipient must promptly return or destroy all
+   copies of the confidential information it holds.
+
+7. Termination. Any unauthorised use automatically ends any rights a person
    may claim in the Software, without prejudice to AcuityGen's other remedies.
 
 Contact: bikram@acuitygen.com
